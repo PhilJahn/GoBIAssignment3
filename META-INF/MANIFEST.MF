@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+Ant-Version: Apache Ant 1.7.1
+Created-By: 20.8-b03-424 (Apple Inc.)
+Implementation-Version: 1.77(1266)
+Implementation-Vendor: Broad Institute
+
