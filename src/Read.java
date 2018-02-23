@@ -20,6 +20,8 @@ public class Read implements Interval{
 	private char strand;
 	private String chr;
 	private boolean incons;
+	int mm;
+	int clip;
 	
 	private IntervalTree<RegionBlock> alignment_blocks;
 	
@@ -41,6 +43,28 @@ public class Read implements Interval{
 			sop = samRecord1;
 			fop = samRecord2;
 		}
+		
+		
+		mm = 0;
+		if( fop.getAttribute("NM") != null ){
+			mm += (Integer) fop.getAttribute("NM");
+		}
+		if( fop.getAttribute("nM") != null ){
+			mm += (Integer) fop.getAttribute("nM");
+		}
+		if( fop.getAttribute("XM") != null ){
+			mm += (Integer) fop.getAttribute("XM");
+		}
+		if( sop.getAttribute("NM") != null ){
+			mm += (Integer) sop.getAttribute("NM");
+		}
+		if( sop.getAttribute("nM") != null ){
+			mm += (Integer) sop.getAttribute("nM");
+		}
+		if( sop.getAttribute("XM") != null ){
+			mm += (Integer) sop.getAttribute("XM");
+		}
+		
 		
 		this.start = Math.min(fop.getAlignmentStart(), sop.getAlignmentStart());
 		int o_start = Math.max(fop.getAlignmentStart(), sop.getAlignmentStart());
@@ -179,7 +203,13 @@ public class Read implements Interval{
 			exons_sop.add(newblock);
 		}
 		
+		int fop_start_diff = fop.getAlignmentStart() - fop.getUnclippedStart();
+		int fop_stop_diff = fop.getUnclippedEnd() - fop.getAlignmentEnd();
 		
+		int sop_start_diff = sop.getAlignmentStart() - sop.getUnclippedStart();
+		int sop_stop_diff = sop.getUnclippedEnd() - sop.getAlignmentEnd();
+		
+		clip = fop_start_diff + fop_stop_diff + sop_start_diff + sop_stop_diff;
 		
 //		if(incons){
 //			System.out.println(readname);
@@ -261,6 +291,18 @@ public class Read implements Interval{
 	
 	public char getStrand(){
 		return strand;
+	}
+	
+	public int getMM(){
+		return mm;
+	}
+	
+	public int getClip(){
+		return clip;
+	}
+
+	public int getSplit(){
+		return introns.size();
 	}
 
 	class RegionBlockComparator implements Comparator<RegionBlock>

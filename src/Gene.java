@@ -35,10 +35,13 @@ public class Gene extends Region{
 	
 	private HashSet<String> transReadIds;
 	
-	public Gene(int x1, int x2, Annotation annotation){
+	private String gene_biotype;
+	
+	public Gene(int x1, int x2, Annotation annotation, String gene_biotype){
 		super(x1,x2,annotation);
 		transcripts = new HashMap <String,Transcript>();
 		transReadIds = new  HashSet<String>();
+		this.gene_biotype = gene_biotype;
 	}
 
 //	public Gene(int x1, int x2, Annotation annotation, Annotation subannotation){
@@ -63,149 +66,6 @@ public class Gene extends Region{
 			n += transcripts.get(k).getProtNum();
 		}
 		return n;
-	}
-	
-	public ArrayList<ExonSkip> getExonSkips() {
-//		long startTime = System.currentTimeMillis();
-		IntervalTree<Region> introns = new IntervalTree<Region>();
-		
-		for( String k : transcripts.keySet() ){
-			Transcript curTran = transcripts.get(k);
-			if(curTran.setIntrons()){
-				introns.addAll(curTran.getIntrons());
-			}
-		}
-		//introns holds all introns
-		
-//		long stopTime = System.currentTimeMillis();
-//		System.out.println("All Introns: " + (stopTime-startTime));
-		
-//		startTime = System.currentTimeMillis();
-		IntervalTree<Region> mergeIntrons = new IntervalTree<Region>();
-		Iterator<Region> iterator = introns.iterator();
-		int lastStart = -1;
-		int lastStop = -1;
-		int curStart = -2;
-		int curStop = -2;
-		while(iterator.hasNext()){
-			Region curIntron = iterator.next();
-			curStart = curIntron.getStart();
-			curStop = curIntron.getStop();
-			if(lastStart != curStart || lastStop != curStop){
-				ArrayList<Region> sameIntron = new ArrayList<Region>();
-				sameIntron = introns.getIntervalsEqual(curStart, curStop, sameIntron);
-				Region mergeIntron = curIntron;
-				for( Region r : sameIntron){
-					mergeIntron = mergeIntron.merge(r);
-				}
-				mergeIntrons.add(mergeIntron);
-				lastStart = curStart;
-				lastStop = curStop;
-			}
-		}
-		//mergeIntrons holds all distinct introns
-		
-//		stopTime = System.currentTimeMillis();
-//		System.out.println("merge Introns: " + (stopTime-startTime));
-		
-//		System.out.println(mergeIntrons.toTreeString());
-		
-		ArrayList<ExonSkip> skips = new ArrayList<ExonSkip>();
-		
-		Iterator<Region> mergeIterator = mergeIntrons.iterator();
-//		startTime = System.currentTimeMillis();
-		while(mergeIterator.hasNext()){
-			Region sv = mergeIterator.next();
-			int svstart = sv.getStart();
-			int svstop = sv.getStop();
-			
-			HashSet<String> sv_transcript_ids = sv.getAnnotation().getSuperIds();
-			
-			HashSet<String> wt_start_transcript_ids = new HashSet<String>();
-			
-			HashSet<Region> wt_candidatesStart = new HashSet<Region>();
-			wt_candidatesStart = mergeIntrons.getIntervalsBeginAt(svstart, wt_candidatesStart);
-			
-			for(Region wt_candidate : wt_candidatesStart){
-				wt_start_transcript_ids.addAll(wt_candidate.getAnnotation().getSuperIds());
-			}
-
-			HashSet<String> wt_stop_transcript_ids = new HashSet<String>();
-			
-			HashSet<Region> wt_candidatesStop = new HashSet<Region>();
-			wt_candidatesStop = mergeIntrons.getIntervalsEndAt(svstop, wt_candidatesStop);
-			
-			for(Region wt_candidate : wt_candidatesStop){
-				wt_stop_transcript_ids.addAll(wt_candidate.getAnnotation().getSuperIds());
-			}
-			
-			HashSet<String> wt_transcript_ids = new HashSet<String>();
-			
-			wt_transcript_ids.addAll(wt_stop_transcript_ids);
-			
-			wt_transcript_ids.retainAll(wt_start_transcript_ids);
-			wt_transcript_ids.removeAll(sv_transcript_ids);
-			
-			if(wt_transcript_ids.size() > 0){
-			
-			int minBase = svstop -svstart;
-			int maxBase = 0;
-			
-			int minEx = svstop -svstart;
-			int maxEx = 0;
-			
-			HashSet<String> wt_prot_ids = new HashSet<String>();
-			
-			HashSet<Region> wt_skips = new HashSet<Region>();
-			
-			HashSet<Region> wt_exons = new HashSet<Region>();
-			
-//			System.out.println("Transcript IDs " + wt_transcript_ids);
-			
-			for( String id: wt_transcript_ids){
-				Transcript wt_transcript = transcripts.get(id);
-				HashSet<Region> wt_id_skips = new HashSet<Region>();
-				wt_id_skips = wt_transcript.getIntrons().getIntervalsSpannedBy(svstart, svstop, wt_id_skips);
-				
-				HashSet<Region> wt_id_exons = new HashSet<Region>();
-				wt_id_exons = wt_transcript.getRegionsTree().getIntervalsSpannedBy(svstart, svstop, wt_id_exons);
-				int ex = wt_id_skips.size()-1;
-				maxEx = Math.max(maxEx, ex);
-				minEx = Math.min(minEx, ex);
-				
-				int base = svstop-svstart;
-				for(Region wt_exon: wt_id_exons){	
-					wt_exons.add(wt_exon);
-					
-				}
-				for(Region wt_skip: wt_id_skips){
-					HashSet<String> wt_skip_prot = new HashSet<String>();
-					base -= wt_skip.length();
-	
-					wt_skips.add(wt_skip);
-					
-					wt_skip_prot = wt_skip.getAnnotation().getIds();
-					
-					for(String skip_prot: wt_skip_prot){
-						wt_prot_ids.add(skip_prot);
-					}
-				}
-				
-				
-				maxBase = Math.max(maxBase, base);
-				minBase = Math.min(minBase, base);
-			}
-			
-
-			ExonSkip skip = new ExonSkip(sv.getAnnotation().getIds(),wt_prot_ids,wt_skips,wt_exons,minEx,maxEx,minBase,maxBase, svstart, svstop);
-			skips.add(skip);
-			}
-		}
-//		stopTime = System.currentTimeMillis();
-//		System.out.println("Skip Identifizierung: " + (stopTime-startTime));
-		
-		
-		return skips;
 	}
 	
 	public void removeEmpty(){
@@ -242,6 +102,10 @@ public class Gene extends Region{
 	
 	public HashSet<String> getTransReadIds(){
 		return transReadIds;
+	}
+	
+	public String getBiotype(){
+		return gene_biotype;
 	}
 
 	public boolean inTranscript(Read curRead) {
