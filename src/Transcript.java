@@ -153,4 +153,8 @@ public class Transcript extends RegionVector{
 		return in;
 	}
 	
+	public IntervalTree<RegionBlock> getExons(){
+		return exons;
+	}
+	
 }

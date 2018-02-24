@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -37,11 +38,14 @@ public class Gene extends Region{
 	
 	private String gene_biotype;
 	
+	private IntervalTree<RegionBlock> mergedTrans;
+	
 	public Gene(int x1, int x2, Annotation annotation, String gene_biotype){
 		super(x1,x2,annotation);
 		transcripts = new HashMap <String,Transcript>();
 		transReadIds = new  HashSet<String>();
 		this.gene_biotype = gene_biotype;
+		mergedTrans = new IntervalTree<RegionBlock>();
 	}
 
 //	public Gene(int x1, int x2, Annotation annotation, Annotation subannotation){
@@ -108,24 +112,88 @@ public class Gene extends Region{
 		return gene_biotype;
 	}
 
-	public boolean inTranscript(Read curRead) {
-		boolean transcriptomic = false;
+	public ArrayList<String> inTranscript(Read curRead) {
+		ArrayList<String> transcriptList = new ArrayList<String>();
 //		if(curRead.getReadName().equals("711")){
 //			System.out.println("711");
 //		}
 		for( String k : transcripts.keySet() ){
-			if(!transcriptomic){
-				transcriptomic |= transcripts.get(k).inTranscript(curRead);
+			if(transcripts.get(k).inTranscript(curRead)){
+				transcriptList.add(k);
 			}
 		}
-//		if(curRead.getReadName().equals("7075")){
-//			System.out.println(transcriptomic);
+		
+		return transcriptList;
+	}
+	
+	public boolean inMerged(Read curRead) {
+		if(!(mergedTrans.size() > 0)){
+			this.mergeTrans();
+//			if(this.getAnnotation().getId().equals("ENSG00000227232") && curRead.getReadName().equals("42321036")){
+//				System.out.println("I was here");
+//			}
+		}
+//		if(this.getAnnotation().getId().equals("ENSG00000227232") && curRead.getReadName().equals("42321036")){
+//			System.out.println("ENSG00000227232");
+//			System.out.println(this.mergedTrans.toString());
+//			System.out.println(this.mergedTrans.size());
+//			System.out.println("42321036");
+//			System.out.println(curRead.getAlignmentBlocks().toString());
 //		}
-		if(transcriptomic){
-			this.transReadIds.add(curRead.getReadName());
+		ArrayList<RegionBlock> readRV =  new ArrayList<RegionBlock>(curRead.getAlignmentBlocks());
+		
+		HashSet<RegionBlock> cont;
+		for(RegionBlock rb : readRV){
+			cont = new HashSet<RegionBlock>();
+			cont = mergedTrans.getIntervalsSpanning(rb.getStart(), rb.getStop()-1, cont);
+			if(cont.size() == 0){
+				return false;
+			}
 		}
 		
-		return transcriptomic;
+		return true;
+	}
+	
+	private void mergeTrans(){
+		IntervalTree<RegionBlock> mergeRegions = new IntervalTree<RegionBlock>();
+		for( String k : transcripts.keySet() ){
+			mergeRegions.addAll(transcripts.get(k).getExons());
+		}
+		
+//		if(this.getAnnotation().getId().equals("ENSG00000227232")){
+//			System.out.println("Merge of ENSG00000227232");
+//			System.out.println(mergeRegions.toString());	
+//			
+//		}
+		
+		Iterator<Set<RegionBlock>> mergereg_it = mergeRegions.groupIterator();
+		while(mergereg_it.hasNext()){
+			Set<RegionBlock> overlap = mergereg_it.next();
+			RegionBlock[] overlapArray = new RegionBlock[overlap.size()];
+			overlapArray = overlap.toArray(overlapArray);
+			Arrays.sort(overlapArray,new StartRegionBlockComparator());
+			int start = overlapArray[0].getStart();
+			Arrays.sort(overlapArray,new StopRegionBlockComparator());
+			int stop = overlapArray[overlapArray.length-1].getStop();
+			
+			RegionBlock newblock = new RegionBlock(start,stop);
+			mergedTrans.add(newblock);
+		}
 	}
 }
 
+class StartRegionBlockComparator implements Comparator<RegionBlock>
+{
+    public int compare(RegionBlock x1, RegionBlock x2)
+    {
+        return x1.getStart() - x2.getStart();
+    }
+}
+
+class StopRegionBlockComparator implements Comparator<RegionBlock>
+{
+    public int compare(RegionBlock x1, RegionBlock x2)
+    {
+        return x1.getStop() - x2.getStop();
+    }
+}

@@ -127,60 +127,60 @@ public class BAMFeatures {
 	        		curGene = gene;
 	        		curGAnno = geneAnno;
 	        	}
-	        	if(lineSplit[2].equals("CDS")){
-	        		attr = getAttributes(attrSplit);
-	        		String super_super_id = attr.get("gene_id");
-	        		String gene_name = attr.get("gene_name");
-	        		String super_id = attr.get("transcript_id");
-	        		String id = attr.get("protein_id");
-	        		String type = lineSplit[1];
-	        		char strand = lineSplit[6].charAt(0);
-	        		String chr = lineSplit[0];
-	        		int start = Integer.parseInt(lineSplit[3]);
-	        		int stop = Integer.parseInt(lineSplit[4]);
-	        		Region cds;
-	        		Annotation cdsAnno;
-	        		if(curCAnno != null && curCAnno.getId().equals(id) && curCAnno.getSuperId().equals(super_id) && curCAnno.getSuperSuperId().equals(super_super_id)){
-	        			cdsAnno = curCAnno;
-	        		}
-	        		else{
-	        			cdsAnno = mapAnno.get(id+super_id+super_super_id);
-	        			if(!(cdsAnno != null)){
-	        				cdsAnno = new Annotation(id,chr,strand,super_id,super_super_id,type,gene_name);
-	        				mapAnno.put(id+super_id+super_super_id,cdsAnno);
-	        			}
-	        			curCAnno = cdsAnno;
-	        		}
-	        		cds = new Region(start,stop,cdsAnno);
-	        		
-	        		
-	        		if(cdsAnno.isSub(curTAnno)){
-	        			curTrans.add(cds);
-	        		}
-	        		else {
-		        		String transcript_name = attr.get("transcript_name");	        			
-		        		Annotation transAnno = new Annotation(super_id,transcript_name,chr,strand,super_super_id,type,gene_name);
-		        		Transcript trans = new Transcript(start,stop,transAnno);
-
-		        		if(transAnno.isSub(curGAnno)){
-		        			curGene.add(trans);
-		        		}
-		        		else{
-		        			System.out.println(transAnno.getSuperId() + " is missing");
-//			        		Annotation geneAnno = new Annotation(super_super_id,gene_name,chr,strand,type);
-//			        		Gene gene = new Gene(start, stop, geneAnno);
-//			        		geneSet.put(gene.hashCode(),gene);
-//			        		curGene = gene;
-//			        		curGAnno = geneAnno;
-//			        		curGene.add(trans);
-		        		}
-		        		
-		        		curTAnno = transAnno;
-		        		curTrans = trans;
-		        		curTrans.add(cds);
-	        		}
-	        		
-	        	}
+//	        	if(lineSplit[2].equals("CDS")){
+//	        		attr = getAttributes(attrSplit);
+//	        		String super_super_id = attr.get("gene_id");
+//	        		String gene_name = attr.get("gene_name");
+//	        		String super_id = attr.get("transcript_id");
+//	        		String id = attr.get("protein_id");
+//	        		String type = lineSplit[1];
+//	        		char strand = lineSplit[6].charAt(0);
+//	        		String chr = lineSplit[0];
+//	        		int start = Integer.parseInt(lineSplit[3]);
+//	        		int stop = Integer.parseInt(lineSplit[4]);
+//	        		Region cds;
+//	        		Annotation cdsAnno;
+//	        		if(curCAnno != null && curCAnno.getId().equals(id) && curCAnno.getSuperId().equals(super_id) && curCAnno.getSuperSuperId().equals(super_super_id)){
+//	        			cdsAnno = curCAnno;
+//	        		}
+//	        		else{
+//	        			cdsAnno = mapAnno.get(id+super_id+super_super_id);
+//	        			if(!(cdsAnno != null)){
+//	        				cdsAnno = new Annotation(id,chr,strand,super_id,super_super_id,type,gene_name);
+//	        				mapAnno.put(id+super_id+super_super_id,cdsAnno);
+//	        			}
+//	        			curCAnno = cdsAnno;
+//	        		}
+//	        		cds = new Region(start,stop,cdsAnno);
+//	        		
+//	        		
+//	        		if(cdsAnno.isSub(curTAnno)){
+//	        			curTrans.add(cds);
+//	        		}
+//	        		else {
+//		        		String transcript_name = attr.get("transcript_name");	        			
+//		        		Annotation transAnno = new Annotation(super_id,transcript_name,chr,strand,super_super_id,type,gene_name);
+//		        		Transcript trans = new Transcript(start,stop,transAnno);
+//
+//		        		if(transAnno.isSub(curGAnno)){
+//		        			curGene.add(trans);
+//		        		}
+//		        		else{
+//		        			System.out.println(transAnno.getSuperId() + " is missing");
+////			        		Annotation geneAnno = new Annotation(super_super_id,gene_name,chr,strand,type);
+////			        		Gene gene = new Gene(start, stop, geneAnno);
+////			        		geneSet.put(gene.hashCode(),gene);
+////			        		curGene = gene;
+////			        		curGAnno = geneAnno;
+////			        		curGene.add(trans);
+//		        		}
+//		        		
+//		        		curTAnno = transAnno;
+//		        		curTrans = trans;
+//		        		curTrans.add(cds);
+//	        		}
+//	        		
+//	        	}
 	        	if(lineSplit[2].equals("exon")){
 	        		attr = getAttributes(attrSplit);
 	        		String super_super_id = attr.get("gene_id");
@@ -377,6 +377,15 @@ public class BAMFeatures {
 						resultBuilder.append(spl);
 						
 					    char str = curRead.getStrand();
+					    
+					    char revstr;
+					    if(str == '-'){
+					    	revstr = '+';
+					    }
+					    else{
+					    	revstr = '-';
+					    }
+					    
 					    String chr = curRead.getChromosome();
 					    
 					    int start = curRead.getStart();
@@ -391,13 +400,85 @@ public class BAMFeatures {
 					    
 					    
 					    if(cgenes.size() > 0){
+					    	ArrayList<String> gList = new ArrayList<String>();
+					    	ArrayList<String> tgList = new ArrayList<String>();
+					    	StringBuilder tgBuilder = new StringBuilder();
 					    	for(Gene g : cgenes){
-//								if(curRead.getReadName().equals("7075")){
-//									System.out.println(g.toString());
-//								}
-					    		
-					    		transcriptomic |= g.inTranscript(curRead);
+					    		tgList = g.inTranscript(curRead);
+					    		if(tgList.size() > 0){
+					    			tgBuilder.append(g.getAnnotation().getId());
+					    			tgBuilder.append(com);
+					    			tgBuilder.append(g.getBiotype());
+					    			tgBuilder.append(dop);
+					    			tgBuilder.append(tgList.get(0));
+					    			for( int i = 1; i < tgList.size(); i++){
+					    				tgBuilder.append(com);
+						    			tgBuilder.append(tgList.get(i));
+					    			}
+					    			
+					    			gList.add(tgBuilder.toString());
+					    			tgBuilder.setLength(0);
+					    		}
 					    	}
+					    	if(gList.size() > 0){
+						    	resultBuilder.append(tab);
+					    		resultBuilder.append(couStr);
+					    		resultBuilder.append(gList.size());
+					    		
+					    		resultBuilder.append(tab);
+					    		resultBuilder.append(gList.get(0));
+					    		for( int i = 1; i < gList.size(); i++){
+				    				resultBuilder.append(sip);
+					    			resultBuilder.append(gList.get(i));
+				    			}
+					    	}
+					    	else{
+					    		for(Gene g : cgenes){
+						    		if(g.inMerged(curRead)){
+						    			tgBuilder.append(g.getAnnotation().getId());
+						    			tgBuilder.append(com);
+						    			tgBuilder.append(g.getBiotype());
+						    			tgBuilder.append(dop);
+						    			tgBuilder.append(merStr);
+						    			gList.add(tgBuilder.toString());
+						    			tgBuilder.setLength(0);
+						    		}
+					    		}
+					    		if(gList.size() > 0){
+							    	resultBuilder.append(tab);
+						    		resultBuilder.append(couStr);
+						    		resultBuilder.append(gList.size());
+						    		
+						    		resultBuilder.append(tab);
+						    		resultBuilder.append(gList.get(0));
+						    		for( int i = 1; i < gList.size(); i++){
+					    				resultBuilder.append(sip);
+						    			resultBuilder.append(gList.get(i));
+					    			}
+						    	}
+					    		else{
+						    		for(Gene g : cgenes){
+							    		tgBuilder.append(g.getAnnotation().getId());
+							    		tgBuilder.append(com);
+							    		tgBuilder.append(g.getBiotype());
+							    		tgBuilder.append(dop);
+							    		tgBuilder.append(intStr);
+							    		gList.add(tgBuilder.toString());
+							    		tgBuilder.setLength(0);
+						    		}
+							    	resultBuilder.append(tab);
+						    		resultBuilder.append(couStr);
+						    		resultBuilder.append(gList.size());
+						    		
+						    		resultBuilder.append(tab);
+						    		resultBuilder.append(gList.get(0));
+						    		for( int i = 1; i < gList.size(); i++){
+					    				resultBuilder.append(sip);
+						    			resultBuilder.append(gList.get(i));
+					    			}
+					    		}
+					    	}
+					    	
 					    }
 					    else{
 					    	resultBuilder.append(tab);
@@ -444,6 +525,19 @@ public class BAMFeatures {
 					    			}
 					    		}
 					    		
+					    		boolean antisense = false;
+					    		ArrayList<Gene> antigenes = new ArrayList<Gene>();
+							    if(geneTree.get(chr).containsKey(revstr)){
+							    	
+							    	antigenes = geneTree.get(chr).get(revstr).getIntervalsSpanning(start, stop, antigenes);
+							    	if(antigenes.size() > 0){
+							    		antisense = true;
+							    	}
+							    }
+							    
+							    resultBuilder.append(tab);
+					    		resultBuilder.append(ansStr);
+					    		resultBuilder.append(false);
 					    	}
 					    }
 					    
