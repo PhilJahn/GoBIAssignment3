@@ -20,8 +20,9 @@ public class Read implements Interval{
 	private char strand;
 	private String chr;
 	private boolean incons;
-	int mm;
-	int clip;
+	private int mm;
+	private int clip;
+	private int split;
 	
 	private IntervalTree<RegionBlock> alignment_blocks;
 	
@@ -45,26 +46,35 @@ public class Read implements Interval{
 		}
 		
 		
-		mm = 0;
-		if( fop.getAttribute("NM") != null ){
-			mm += (Integer) fop.getAttribute("NM");
-		}
-		if( fop.getAttribute("nM") != null ){
-			mm += (Integer) fop.getAttribute("nM");
-		}
-		if( fop.getAttribute("XM") != null ){
-			mm += (Integer) fop.getAttribute("XM");
-		}
-		if( sop.getAttribute("NM") != null ){
-			mm += (Integer) sop.getAttribute("NM");
-		}
-		if( sop.getAttribute("nM") != null ){
-			mm += (Integer) sop.getAttribute("nM");
-		}
-		if( sop.getAttribute("XM") != null ){
-			mm += (Integer) sop.getAttribute("XM");
-		}
+//		mm = 0;
+//		if( fop.getAttribute("NM") != null ){
+//			mm += (Integer) fop.getAttribute("NM");
+//		}
+//		if( fop.getAttribute("nM") != null ){
+//			mm += (Integer) fop.getAttribute("nM");
+//		}
+//		if( fop.getAttribute("XM") != null ){
+//			mm += (Integer) fop.getAttribute("XM");
+//		}
+//		if( sop.getAttribute("NM") != null ){
+//			mm += (Integer) sop.getAttribute("NM");
+//		}
+//		if( sop.getAttribute("nM") != null ){
+//			mm += (Integer) sop.getAttribute("nM");
+//		}
+//		if( sop.getAttribute("XM") != null ){
+//			mm += (Integer) sop.getAttribute("XM");
+//		}
 		
+		Integer mmfop = (Integer) fop.getAttribute("NM");
+		mmfop = (mmfop != null) ? mmfop : (Integer) fop.getAttribute("nM");
+		mmfop = (mmfop != null) ? mmfop : (Integer) fop.getAttribute("XM");
+		
+		Integer mmsop = (Integer) sop.getAttribute("NM");
+		mmsop = (mmsop != null) ? mmsop : (Integer) sop.getAttribute("nM");
+		mmsop = (mmsop != null) ? mmsop : (Integer) sop.getAttribute("XM");
+		
+		this.mm = mmfop + mmsop;
 		
 		this.start = Math.min(fop.getAlignmentStart(), sop.getAlignmentStart());
 		int o_start = Math.max(fop.getAlignmentStart(), sop.getAlignmentStart());
@@ -89,10 +99,28 @@ public class Read implements Interval{
 			exons_fop.add(new RegionBlock(start,stop));
 		}
 		
+		
 //		exons_fop.clear();
 //		
 //		exons_fop.add(new RegionBlock(114357090, 114347830));
 //		exons_fop.add(new RegionBlock(114347890, 114347902));
+		
+		exons_fop.sort(new RegionBlockComparator());
+		
+		IntervalTree<RegionBlock> exons_fop_tree = new IntervalTree<RegionBlock>(exons_fop);
+		exons_fop.clear();
+		Iterator<Set<RegionBlock>> exon_fop_it = exons_fop_tree.groupIterator();
+		while(exon_fop_it.hasNext()){
+			Set<RegionBlock> overlap = exon_fop_it.next();
+			RegionBlock[] overlapArray = new RegionBlock[overlap.size()];
+			overlapArray = overlap.toArray(overlapArray);
+			Arrays.sort(overlapArray,new RegionBlockComparator());
+			int start = overlapArray[0].getStart();
+			int stop = overlapArray[overlapArray.length-1].getStop();
+			
+			RegionBlock newblock = new RegionBlock(start,stop);
+			exons_fop.add(newblock);
+		}
 		
 		exons_fop.sort(new RegionBlockComparator());
 		
@@ -118,9 +146,22 @@ public class Read implements Interval{
 		
 		exons_sop.sort(new RegionBlockComparator());
 		
-		this.exons_fop = exons_fop;
-		this.exons_sop = exons_sop;
-		this.introns = introns;
+		IntervalTree<RegionBlock> exons_sop_tree = new IntervalTree<RegionBlock>(exons_sop);
+		exons_sop.clear();
+		Iterator<Set<RegionBlock>> exon_sop_it = exons_sop_tree.groupIterator();
+		while(exon_sop_it.hasNext()){
+			Set<RegionBlock> overlap = exon_sop_it.next();
+			RegionBlock[] overlapArray = new RegionBlock[overlap.size()];
+			overlapArray = overlap.toArray(overlapArray);
+			Arrays.sort(overlapArray,new RegionBlockComparator());
+			int start = overlapArray[0].getStart();
+			int stop = overlapArray[overlapArray.length-1].getStop();
+			
+			RegionBlock newblock = new RegionBlock(start,stop);
+			exons_sop.add(newblock);
+		}
+		
+		exons_sop.sort(new RegionBlockComparator());
 		
 		for(int i =1 ; i < exons_sop.size(); i++){
 			int start = exons_sop.get(i-1).getStop();
@@ -130,14 +171,29 @@ public class Read implements Interval{
 			}
 		}
 		
+		this.exons_fop = exons_fop;
+		this.exons_sop = exons_sop;
+		this.introns = introns;
+		
 		IntervalTree<RegionBlock> exons = new IntervalTree<RegionBlock>();
 		exons.addAll(exons_sop);
 		exons.addAll(exons_fop);
 		
 		incons = false;
 		
+//		if(readname.equals("9887855")){
+//			System.out.println("Exons_FoP: " + exons_fop.toString());
+//			System.out.println("Exons_SoP: "  + exons_sop.toString());
+//			System.out.println("Introns: " + introns.toString());
+//			System.out.println("Start: " + start);
+//			System.out.println("Stop: " + stop);
+//			System.out.println("o_start: " + o_start);
+//			System.out.println("o_stop: " + o_stop);
+//			
+//		}
+		
 		for( RegionBlock intron : introns){
-			if(intron.getStart() <= o_stop && intron.getStop() > o_start){
+			if(intron.getStart() <= o_stop+1 && intron.getStop() > o_start){
 				
 //				System.out.println(intron);
 				
@@ -146,13 +202,18 @@ public class Read implements Interval{
 				ArrayList<RegionBlock> bord = new ArrayList<RegionBlock>();
 				bord =exons.getIntervalsIntersecting(intron.getStart()-1, intron.getStop(), bord);
 				
-				if(cont.size() != 0){
+//				if(readname.equals("9887855")){
+//					System.out.println(intron);
 //					System.out.println("cont " + cont.size());
+//					System.out.println("bord " + cont.size());
+//				}
+//				
+				
+				if(cont.size() != 0){
 					incons = true;
 				}
 				
 				if(bord.size() != 4){
-//					System.out.println("bord " + bord.size());
 					incons = true;
 				}
 			}
@@ -173,11 +234,14 @@ public class Read implements Interval{
 			alignment_blocks.add(newblock);
 		}
 		
-		IntervalTree<RegionBlock> exons_fop_tree = new IntervalTree<RegionBlock>(exons_fop);
-		exons_fop.clear();
-		Iterator<Set<RegionBlock>> exon_fop_it = exons_fop_tree.groupIterator();
-		while(exon_fop_it.hasNext()){
-			Set<RegionBlock> overlap = exon_fop_it.next();
+
+		this.introns.sort(new RegionBlockComparator());
+		
+		IntervalTree<RegionBlock> introns_tree = new IntervalTree<RegionBlock>(this.introns);
+		this.introns.clear();
+		Iterator<Set<RegionBlock>> introns_it = introns_tree.groupIterator();
+		while(introns_it.hasNext()){
+			Set<RegionBlock> overlap = introns_it.next();
 			RegionBlock[] overlapArray = new RegionBlock[overlap.size()];
 			overlapArray = overlap.toArray(overlapArray);
 			Arrays.sort(overlapArray,new RegionBlockComparator());
@@ -185,23 +249,10 @@ public class Read implements Interval{
 			int stop = overlapArray[overlapArray.length-1].getStop();
 			
 			RegionBlock newblock = new RegionBlock(start,stop);
-			exons_fop.add(newblock);
+			this.introns.add(newblock);
 		}
 		
-		IntervalTree<RegionBlock> exons_sop_tree = new IntervalTree<RegionBlock>(exons_sop);
-		exons_sop.clear();
-		Iterator<Set<RegionBlock>> exon_sop_it = exons_sop_tree.groupIterator();
-		while(exon_sop_it.hasNext()){
-			Set<RegionBlock> overlap = exon_sop_it.next();
-			RegionBlock[] overlapArray = new RegionBlock[overlap.size()];
-			overlapArray = overlap.toArray(overlapArray);
-			Arrays.sort(overlapArray,new RegionBlockComparator());
-			int start = overlapArray[0].getStart();
-			int stop = overlapArray[overlapArray.length-1].getStop();
-			
-			RegionBlock newblock = new RegionBlock(start,stop);
-			exons_sop.add(newblock);
-		}
+		
 		
 		int fop_start_diff = fop.getAlignmentStart() - fop.getUnclippedStart();
 		int fop_stop_diff = fop.getUnclippedEnd() - fop.getAlignmentEnd();

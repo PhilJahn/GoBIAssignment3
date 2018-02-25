@@ -2,6 +2,7 @@ import java.awt.List;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
@@ -13,6 +14,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.TreeMap;
 import java.util.Vector;
 
 import AugmentedTree.IntervalTree;
@@ -59,19 +61,14 @@ public class BAMFeatures {
 			
 			Path gtfFilePath = Paths.get(gtfPath);
 			Path bamFilePath = Paths.get(bamPath);
-			Path outputFilePath = Paths.get(outputPath);
 			
 			File gtfFile = gtfFilePath.toFile();
 			File bamFile = bamFilePath.toFile();
 			
 			BAMFeatures bamf = new BAMFeatures(gtfFile, bamFile, strandness);
-		
-			String output = bamf.getOutput();
 			
-			ArrayList<String> outputAsList = new ArrayList<String>();
-			outputAsList.add(output);
 			try {
-				Files.write(outputFilePath, outputAsList, Charset.forName("UTF-8"));
+				bamf.getOutput(outputPath);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -84,11 +81,13 @@ public class BAMFeatures {
 	private HashMap<String,HashMap<Character,IntervalTree<Gene>>> geneTree;
 	private HashMap<String,HashMap<Character,IntervalTree<Read>>> readTree;
 	
+	int strandness;
+	
 	private SAMFileReader bam_reader;
 	
 	public BAMFeatures (File gtfFile, File bamFile, int strandness) {
 //		long startTime = System.currentTimeMillis();
-		
+		this.strandness = strandness;
 		bam_reader = new SAMFileReader(bamFile);
 		bam_reader.setValidationStringency(SAMFileReader.ValidationStringency.SILENT);
 		
@@ -311,13 +310,14 @@ public class BAMFeatures {
 		return result;
 	}
 	
-	public String getOutput(){
+	public void getOutput(String outputPath) throws IOException{
 		String tab = "\t";
 		String brk = "\n";
 		char dop = ':';
 		char sip = '|';
 		char lin = '-';
 		char com = ',';
+		char spa = ' ';
 		
 		String incStr = "split-inconsistent:true";
 		String mmStr = "mm:";
@@ -338,6 +338,12 @@ public class BAMFeatures {
 		
 		readTree = new HashMap<String,HashMap<Character,IntervalTree<Read>>>();
 		
+		// <Stop <Start, Count>>
+		TreeMap<Integer,HashMap<Integer,HashMap<String,Pair<Integer>>>> readMap = new TreeMap<Integer,HashMap<Integer,HashMap<String,Pair<Integer>>>>();
+		String curChr = "";
+		FileWriter outputWriter = new FileWriter(outputPath,false);
+		outputWriter.write(resultBuilder.toString());
+		
 		while(bam_it.hasNext()){
 
 			SAMRecord samr = bam_it.next();
@@ -348,6 +354,8 @@ public class BAMFeatures {
 
 			if(inPair && !ignore){
 				String readname = samr.getReadName();
+				
+				
 //				&& readname.equals("87178")	
 //				Integer x= count.put(readname,1);
 //				if(x != null){
@@ -357,42 +365,47 @@ public class BAMFeatures {
 //					System.out.println(readname);
 					Read curRead = new Read(samr, store.get(readname));
 					
-					resultBuilder.append(readname);
-					
-					if(curRead.isConsistent()){
-						
-						resultBuilder.append(tab);
-						resultBuilder.append(mmStr);
-						int mm = curRead.getMM();
-						resultBuilder.append(mm);
-						
-						resultBuilder.append(tab);
-						resultBuilder.append(clipStr);
-						int clip = curRead.getClip();
-						resultBuilder.append(clip);
-						
-						resultBuilder.append(tab);
-						resultBuilder.append(splStr);
-						int spl = curRead.getSplit();
-						resultBuilder.append(spl);
-						
-					    char str = curRead.getStrand();
-					    
-					    char revstr;
+//					if(readname.equals("9887855")){
+//						System.out.println("Combined: " +curRead.getAlignmentBlocks().toString());
+//						System.out.println("FoP: " + curRead.getAlignmentBlocksFoP().toString());
+//						System.out.println("SoP: " +curRead.getAlignmentBlocksSoP().toString());
+//						System.out.println("Consistent? " +curRead.isConsistent());
+//					}
+					char str = curRead.getStrand();
+					int mm = curRead.getMM();
+					int clip = curRead.getClip();
+					int spl = curRead.getSplit();
+
+				    char revstr;
+				    
+				    if(strandness == 2){
+					    if(str == '-'){
+					    	str = '+';
+					    	revstr = '-';
+					    }
+					    else{
+					    	str = '-';
+					    	revstr = '+';
+					    }
+				    }
+				    else{
 					    if(str == '-'){
 					    	revstr = '+';
 					    }
 					    else{
 					    	revstr = '-';
 					    }
-					    
-					    String chr = curRead.getChromosome();
-					    
-					    int start = curRead.getStart();
-					    int stop = curRead.getStop();
-					    
-					    boolean transcriptomic = false;
-					   
+				    }
+				    
+				    String chr = curRead.getChromosome();
+				    
+				    int start = curRead.getStart();
+				    int stop = curRead.getStop();
+				    
+				    boolean skipped = false;
+				    
+					if(curRead.isConsistent()){
+
 					    HashSet<Gene> cgenes = new HashSet<Gene>();
 					    cgenes = geneTree.get(chr).get(str).getIntervalsSpanning(start, stop, cgenes);
 					    HashSet<Gene> igenes = new HashSet<Gene>();
@@ -400,6 +413,20 @@ public class BAMFeatures {
 					    
 					    
 					    if(cgenes.size() > 0){
+					    	resultBuilder.append(readname);
+					    	
+							resultBuilder.append(tab);
+							resultBuilder.append(mmStr);
+							resultBuilder.append(mm);
+							
+							resultBuilder.append(tab);
+							resultBuilder.append(clipStr);
+							resultBuilder.append(clip);
+							
+							resultBuilder.append(tab);
+							resultBuilder.append(splStr);
+							resultBuilder.append(spl);
+					    	
 					    	ArrayList<String> gList = new ArrayList<String>();
 					    	ArrayList<String> tgList = new ArrayList<String>();
 					    	StringBuilder tgBuilder = new StringBuilder();
@@ -478,18 +505,29 @@ public class BAMFeatures {
 					    			}
 					    		}
 					    	}
-					    	
 					    }
 					    else{
-					    	resultBuilder.append(tab);
-				    		resultBuilder.append(couStr);
-				    		resultBuilder.append(0);
 				    		
 					    	if(igenes.size() > 0){
-					    		resultBuilder.append(tab);
-					    		resultBuilder.append("skip");
+					    		skipped = true;
 					    	}
 					    	else{
+					    		resultBuilder.append(readname);
+								resultBuilder.append(tab);
+								resultBuilder.append(mmStr);
+								resultBuilder.append(mm);
+								
+								resultBuilder.append(tab);
+								resultBuilder.append(clipStr);
+								resultBuilder.append(clip);
+								
+								resultBuilder.append(tab);
+								resultBuilder.append(splStr);
+								resultBuilder.append(spl);
+								
+						    	resultBuilder.append(tab);
+					    		resultBuilder.append(couStr);
+					    		resultBuilder.append(0);
 					    		
 					    		resultBuilder.append(tab);
 					    		resultBuilder.append(distStr);
@@ -541,34 +579,104 @@ public class BAMFeatures {
 					    	}
 					    }
 					    
-					    if(transcriptomic){
-						    if(readTree.containsKey(chr)){
-						    	HashMap<Character,IntervalTree<Read>> chrTree = readTree.get(chr);
-						    	if(chrTree.containsKey(str)){
-						    		IntervalTree<Read> strTree = chrTree.get(str);
-						    		strTree.add(curRead);
-						    	}
-						    	else{
-						    		IntervalTree<Read> strTree = new IntervalTree<Read>();
-						    		strTree.add(curRead);
-						    		chrTree.put(str, strTree);
-						    	}
-						   	}
-					    	else{
-					    		IntervalTree<Read> strTree = new IntervalTree<Read>();
-					    		strTree.add(curRead);
-					    		HashMap<Character,IntervalTree<Read>> chrTree = new HashMap<Character,IntervalTree<Read>>();
-					    		chrTree.put(str, strTree);
-					   			readTree.put(chr, chrTree);
+					    if(!skipped){
+					    	
+					    	if(!(curChr.equals(chr))){
+					    		readMap.clear();
 					    	}
+					    	
+					    	readMap.headMap(start).clear();
+					    	int c = 0;
+					    	
+					    	//Pair ( + , -)
+					    	
+					    	String readString = curRead.getAlignmentBlocks().toString();
+					    	
+					    	if(readMap.containsKey(stop)){
+					    		HashMap<Integer,HashMap<String,Pair<Integer>>> stopMap = readMap.get(stop);
+					    		if(stopMap.containsKey(start)){
+					    			HashMap<String,Pair<Integer>> startMap = stopMap.get(start);
+					    			
+					    			if(startMap.containsKey(readString)){
+					    				Pair<Integer> p = startMap.get(readString);
+					    				if(str == '+'){
+					    					c = p.p1;
+					    					p = new Pair<Integer>(p.p1+1, p.p2);
+					    				
+					    				}
+					    				else{
+					    					c = p.p2;
+					    					p = new Pair<Integer>(p.p1, p.p2+1);
+					    				}
+					    				startMap.put(readString, p);
+					    			}
+					    			else{
+					    				if(str == '+'){
+						    				startMap.put(readString, new Pair<Integer>(1,0));
+						    			}
+						    			else{
+						    				startMap.put(readString, new Pair<Integer>(0,1));
+						    			}
+					    			}
+					    		}
+					    		else{
+					    			HashMap<String,Pair<Integer>> startMap = new HashMap<String,Pair<Integer>>();
+					    			if(str == '+'){
+					    				startMap.put(readString, new Pair<Integer>(1,0));
+					    			}
+					    			else{
+					    				startMap.put(readString, new Pair<Integer>(0,1));
+					    			}
+					    			stopMap.put(start,startMap);
+					    			
+					    		}
+					    	}
+					    	else{
+					    		HashMap<String,Pair<Integer>> startMap = new HashMap<String,Pair<Integer>>();
+					    		HashMap<Integer,HashMap<String,Pair<Integer>>> stopMap = new HashMap<Integer,HashMap<String,Pair<Integer>>>();
+				    			if(str == '+'){
+				    				startMap.put(readString, new Pair<Integer>(1,0));
+				    			}
+				    			else{
+				    				startMap.put(readString, new Pair<Integer>(0,1));
+				    			}
+				    			stopMap.put(start,startMap);
+					    		readMap.put(stop, stopMap);
+					    	}
+					    	
+						    resultBuilder.append(tab);
+				    		resultBuilder.append(pcrStr);
+				    		resultBuilder.append(spa);
+				    		resultBuilder.append(c);
+				    		
+//				    		resultBuilder.append(tab);
+//				    		resultBuilder.append(readMap.size());
+				    		
+				    		resultBuilder.append(brk);
 					    }
+					    
+					    curChr = chr;
 					}
 					else{
-						resultBuilder.append(tab);
-						resultBuilder.append(incStr);
+						
+					    HashSet<Gene> cgenes = new HashSet<Gene>();
+					    cgenes = geneTree.get(chr).get(str).getIntervalsSpanning(start, stop, cgenes);
+					    HashSet<Gene> igenes = new HashSet<Gene>();
+					    igenes = geneTree.get(chr).get(str).getIntervalsSpannedBy(start, stop, igenes);
+					    
+					    
+					    skipped = cgenes.size() == 0 && igenes.size() > 0;
+					    
+					    if(!skipped){
+							resultBuilder.append(readname);
+							resultBuilder.append(tab);
+							resultBuilder.append(incStr);
+							resultBuilder.append(brk);
+					    }
 					}
 					store.remove(readname);
-					resultBuilder.append(brk);
+					outputWriter.write(resultBuilder.toString());
+					resultBuilder.setLength(0);
 				}
 				else{
 					store.put(readname, samr);
@@ -577,7 +685,7 @@ public class BAMFeatures {
 		}
 		bam_it.close();
 		
-		return resultBuilder.toString();
+		outputWriter.close();
 		
 	}
 	
@@ -594,6 +702,15 @@ public class BAMFeatures {
 	    public int compare(Read x1, Read x2)
 	    {
 	        return x1.getStart() - x2.getStart();
+	    }
+	}
+	
+	class Pair<T> {
+	    T p1;
+	    T p2;
+	    Pair(T p1, T p2) {
+	        this.p1 = p1;
+	        this.p2 = p2;
 	    }
 	}
 
