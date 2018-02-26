@@ -105,7 +105,7 @@ public class Read implements Interval{
 //		exons_fop.add(new RegionBlock(114357090, 114347830));
 //		exons_fop.add(new RegionBlock(114347890, 114347902));
 		
-		exons_fop.sort(new RegionBlockComparator());
+		exons_fop.sort(new StartRegionBlockComparator());
 		
 		IntervalTree<RegionBlock> exons_fop_tree = new IntervalTree<RegionBlock>(exons_fop);
 		exons_fop.clear();
@@ -114,15 +114,16 @@ public class Read implements Interval{
 			Set<RegionBlock> overlap = exon_fop_it.next();
 			RegionBlock[] overlapArray = new RegionBlock[overlap.size()];
 			overlapArray = overlap.toArray(overlapArray);
-			Arrays.sort(overlapArray,new RegionBlockComparator());
+			Arrays.sort(overlapArray,new StartRegionBlockComparator());
 			int start = overlapArray[0].getStart();
+			Arrays.sort(overlapArray,new StopRegionBlockComparator());
 			int stop = overlapArray[overlapArray.length-1].getStop();
 			
 			RegionBlock newblock = new RegionBlock(start,stop);
 			exons_fop.add(newblock);
 		}
 		
-		exons_fop.sort(new RegionBlockComparator());
+		exons_fop.sort(new StartRegionBlockComparator());
 		
 		ArrayList<RegionBlock> introns = new ArrayList<RegionBlock>();
 		for(int i =1 ; i < exons_fop.size(); i++){
@@ -144,7 +145,7 @@ public class Read implements Interval{
 //		exons_sop.add(new RegionBlock(114357090, 114357168));
 //		exons_sop.add(new RegionBlock(114347890, 114347902));
 		
-		exons_sop.sort(new RegionBlockComparator());
+		exons_sop.sort(new StartRegionBlockComparator());
 		
 		IntervalTree<RegionBlock> exons_sop_tree = new IntervalTree<RegionBlock>(exons_sop);
 		exons_sop.clear();
@@ -153,15 +154,16 @@ public class Read implements Interval{
 			Set<RegionBlock> overlap = exon_sop_it.next();
 			RegionBlock[] overlapArray = new RegionBlock[overlap.size()];
 			overlapArray = overlap.toArray(overlapArray);
-			Arrays.sort(overlapArray,new RegionBlockComparator());
+			Arrays.sort(overlapArray,new StartRegionBlockComparator());
 			int start = overlapArray[0].getStart();
+			Arrays.sort(overlapArray,new StopRegionBlockComparator());
 			int stop = overlapArray[overlapArray.length-1].getStop();
 			
 			RegionBlock newblock = new RegionBlock(start,stop);
 			exons_sop.add(newblock);
 		}
 		
-		exons_sop.sort(new RegionBlockComparator());
+		exons_sop.sort(new StartRegionBlockComparator());
 		
 		for(int i =1 ; i < exons_sop.size(); i++){
 			int start = exons_sop.get(i-1).getStop();
@@ -181,7 +183,7 @@ public class Read implements Interval{
 		
 		incons = false;
 		
-//		if(readname.equals("9887855")){
+//		if(readname.equals("4995990")){
 //			System.out.println("Exons_FoP: " + exons_fop.toString());
 //			System.out.println("Exons_SoP: "  + exons_sop.toString());
 //			System.out.println("Introns: " + introns.toString());
@@ -226,8 +228,9 @@ public class Read implements Interval{
 			Set<RegionBlock> overlap = exon_it.next();
 			RegionBlock[] overlapArray = new RegionBlock[overlap.size()];
 			overlapArray = overlap.toArray(overlapArray);
-			Arrays.sort(overlapArray,new RegionBlockComparator());
+			Arrays.sort(overlapArray,new StartRegionBlockComparator());
 			int start = overlapArray[0].getStart();
+			Arrays.sort(overlapArray,new StopRegionBlockComparator());
 			int stop = overlapArray[overlapArray.length-1].getStop();
 			
 			RegionBlock newblock = new RegionBlock(start,stop);
@@ -235,7 +238,7 @@ public class Read implements Interval{
 		}
 		
 
-		this.introns.sort(new RegionBlockComparator());
+		this.introns.sort(new StartRegionBlockComparator());
 		
 		IntervalTree<RegionBlock> introns_tree = new IntervalTree<RegionBlock>(this.introns);
 		this.introns.clear();
@@ -244,8 +247,9 @@ public class Read implements Interval{
 			Set<RegionBlock> overlap = introns_it.next();
 			RegionBlock[] overlapArray = new RegionBlock[overlap.size()];
 			overlapArray = overlap.toArray(overlapArray);
-			Arrays.sort(overlapArray,new RegionBlockComparator());
+			Arrays.sort(overlapArray,new StartRegionBlockComparator());
 			int start = overlapArray[0].getStart();
+			Arrays.sort(overlapArray,new StopRegionBlockComparator());
 			int stop = overlapArray[overlapArray.length-1].getStop();
 			
 			RegionBlock newblock = new RegionBlock(start,stop);
@@ -356,11 +360,19 @@ public class Read implements Interval{
 		return introns.size();
 	}
 
-	class RegionBlockComparator implements Comparator<RegionBlock>
+	class StartRegionBlockComparator implements Comparator<RegionBlock>
 	{
 	    public int compare(RegionBlock x1, RegionBlock x2)
 	    {
 	        return x1.getStart() - x2.getStart();
+	    }
+	}
+	
+	class StopRegionBlockComparator implements Comparator<RegionBlock>
+	{
+	    public int compare(RegionBlock x1, RegionBlock x2)
+	    {
+	        return x1.getStop() - x2.getStop();
 	    }
 	}
 	

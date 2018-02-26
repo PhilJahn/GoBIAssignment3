@@ -129,15 +129,22 @@ public class Gene extends Region{
 	public boolean inMerged(Read curRead) {
 		if(!(mergedTrans.size() > 0)){
 			this.mergeTrans();
-//			if(this.getAnnotation().getId().equals("ENSG00000227232") && curRead.getReadName().equals("42321036")){
+//			if(this.getAnnotation().getId().equals("ENSG00000227232") && curRead.getReadName().equals("4995990")){
 //				System.out.println("I was here");
 //			}
 		}
-//		if(this.getAnnotation().getId().equals("ENSG00000227232") && curRead.getReadName().equals("42321036")){
-//			System.out.println("ENSG00000227232");
+//		if(this.getAnnotation().getId().equals("YBL087C") && curRead.getReadName().equals("4995990")){
+//			System.out.println("YBL087C");
+//			
+//			for( String k : transcripts.keySet() ){
+//				System.out.println(k);
+//				System.out.println(transcripts.get(k).getExons());
+//			}
+//			
+//			System.out.println("Merged");
 //			System.out.println(this.mergedTrans.toString());
 //			System.out.println(this.mergedTrans.size());
-//			System.out.println("42321036");
+//			System.out.println("4995990");
 //			System.out.println(curRead.getAlignmentBlocks().toString());
 //		}
 		ArrayList<RegionBlock> readRV =  new ArrayList<RegionBlock>(curRead.getAlignmentBlocks());

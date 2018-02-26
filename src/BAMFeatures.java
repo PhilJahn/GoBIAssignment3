@@ -339,7 +339,7 @@ public class BAMFeatures {
 		readTree = new HashMap<String,HashMap<Character,IntervalTree<Read>>>();
 		
 		// <Stop <Start, Count>>
-		TreeMap<Integer,HashMap<Integer,HashMap<String,Pair<Integer>>>> readMap = new TreeMap<Integer,HashMap<Integer,HashMap<String,Pair<Integer>>>>();
+		TreeMap<Integer,HashMap<Integer,HashMap<String,Integer>>> readMap = new TreeMap<Integer,HashMap<Integer,HashMap<String,Integer>>>();
 		String curChr = "";
 		FileWriter outputWriter = new FileWriter(outputPath,false);
 		outputWriter.write(resultBuilder.toString());
@@ -367,7 +367,7 @@ public class BAMFeatures {
 //					System.out.println(readname);
 					Read curRead = new Read(samr, store.get(readname));
 					
-//					if(readname.equals("9887855")){
+//					if(readname.equals("4995990")){
 //						System.out.println("Combined: " +curRead.getAlignmentBlocks().toString());
 //						System.out.println("FoP: " + curRead.getAlignmentBlocksFoP().toString());
 //						System.out.println("SoP: " +curRead.getAlignmentBlocksSoP().toString());
@@ -558,7 +558,7 @@ public class BAMFeatures {
 					    }
 					    else{
 				    		
-					    	if(igenes.size() > 0){
+					    	if(igenes.size() > 0 || (igenesRev.size() > 0 && nostrand) ){
 					    		skipped = true;
 					    	}
 					    	else{
@@ -666,53 +666,29 @@ public class BAMFeatures {
 					    	String readString = curRead.getAlignmentBlocks().toString();
 					    	
 					    	if(readMap.containsKey(stop)){
-					    		HashMap<Integer,HashMap<String,Pair<Integer>>> stopMap = readMap.get(stop);
+					    		HashMap<Integer,HashMap<String,Integer>> stopMap = readMap.get(stop);
 					    		if(stopMap.containsKey(start)){
-					    			HashMap<String,Pair<Integer>> startMap = stopMap.get(start);
+					    			HashMap<String,Integer> startMap = stopMap.get(start);
 					    			
 					    			if(startMap.containsKey(readString)){
-					    				Pair<Integer> p = startMap.get(readString);
-					    				if(str == '+'){
-					    					c = p.p1;
-					    					p = new Pair<Integer>(p.p1+1, p.p2);
-					    				
-					    				}
-					    				else{
-					    					c = p.p2;
-					    					p = new Pair<Integer>(p.p1, p.p2+1);
-					    				}
-					    				startMap.put(readString, p);
+					    				c = startMap.get(readString);
+					    				startMap.put(readString, c+1);
 					    			}
 					    			else{
-					    				if(str == '+'){
-						    				startMap.put(readString, new Pair<Integer>(1,0));
-						    			}
-						    			else{
-						    				startMap.put(readString, new Pair<Integer>(0,1));
-						    			}
+						    			startMap.put(readString, 1);
 					    			}
 					    		}
 					    		else{
-					    			HashMap<String,Pair<Integer>> startMap = new HashMap<String,Pair<Integer>>();
-					    			if(str == '+'){
-					    				startMap.put(readString, new Pair<Integer>(1,0));
-					    			}
-					    			else{
-					    				startMap.put(readString, new Pair<Integer>(0,1));
-					    			}
+					    			HashMap<String,Integer> startMap = new HashMap<String,Integer>();
+					    			startMap.put(readString, 1);
 					    			stopMap.put(start,startMap);
 					    			
 					    		}
 					    	}
 					    	else{
-					    		HashMap<String,Pair<Integer>> startMap = new HashMap<String,Pair<Integer>>();
-					    		HashMap<Integer,HashMap<String,Pair<Integer>>> stopMap = new HashMap<Integer,HashMap<String,Pair<Integer>>>();
-				    			if(str == '+'){
-				    				startMap.put(readString, new Pair<Integer>(1,0));
-				    			}
-				    			else{
-				    				startMap.put(readString, new Pair<Integer>(0,1));
-				    			}
+					    		HashMap<String,Integer> startMap = new HashMap<String,Integer>();
+					    		HashMap<Integer,HashMap<String,Integer>> stopMap = new HashMap<Integer,HashMap<String,Integer>>();
+					    		startMap.put(readString, 1);
 				    			stopMap.put(start,startMap);
 					    		readMap.put(stop, stopMap);
 					    	}
@@ -736,9 +712,18 @@ public class BAMFeatures {
 					    cgenes = geneTree.get(chr).get(str).getIntervalsSpanning(start, stop, cgenes);
 					    HashSet<Gene> igenes = new HashSet<Gene>();
 					    igenes = geneTree.get(chr).get(str).getIntervalsSpannedBy(start, stop, igenes);
+					    HashSet<Gene> cgenesRev = new HashSet<Gene>();;
+					    HashSet<Gene> igenesRev= new HashSet<Gene>();;
 					    
+					    if(nostrand){
+
+						    cgenesRev = geneTree.get(chr).get(revstr).getIntervalsSpanning(start, stop, cgenesRev);
+
+						    igenesRev = geneTree.get(chr).get(revstr).getIntervalsSpannedBy(start, stop, igenesRev);
+						    
+					    }
 					    
-					    skipped = cgenes.size() == 0 && igenes.size() > 0;
+					    skipped = (cgenes.size() == 0 || (nostrand && cgenesRev.size() == 0 ))&& (igenes.size() > 0 || (igenesRev.size() > 0 && nostrand)) ;
 					    
 					    if(!skipped){
 							resultBuilder.append(readname);
