@@ -81,7 +81,7 @@ public class BAMFeatures {
 	private HashMap<String,HashMap<Character,IntervalTree<Gene>>> geneTree;
 	private HashMap<String,HashMap<Character,IntervalTree<Read>>> readTree;
 	
-	int strandness;
+	private int strandness;
 	
 	private SAMFileReader bam_reader;
 	
@@ -344,6 +344,8 @@ public class BAMFeatures {
 		FileWriter outputWriter = new FileWriter(outputPath,false);
 		outputWriter.write(resultBuilder.toString());
 		
+		boolean nostrand = strandness == 0;
+		
 		while(bam_it.hasNext()){
 
 			SAMRecord samr = bam_it.next();
@@ -411,8 +413,18 @@ public class BAMFeatures {
 					    HashSet<Gene> igenes = new HashSet<Gene>();
 					    igenes = geneTree.get(chr).get(str).getIntervalsSpannedBy(start, stop, igenes);
 					    
+					    HashSet<Gene> cgenesRev = new HashSet<Gene>();;
+					    HashSet<Gene> igenesRev= new HashSet<Gene>();;
 					    
-					    if(cgenes.size() > 0){
+					    if(nostrand){
+
+						    cgenesRev = geneTree.get(chr).get(revstr).getIntervalsSpanning(start, stop, cgenesRev);
+
+						    igenesRev = geneTree.get(chr).get(revstr).getIntervalsSpannedBy(start, stop, igenesRev);
+						    
+					    }
+					    
+					    if(cgenes.size() > 0 || (cgenesRev.size() > 0  && nostrand)){
 					    	resultBuilder.append(readname);
 					    	
 							resultBuilder.append(tab);
@@ -447,6 +459,24 @@ public class BAMFeatures {
 					    			tgBuilder.setLength(0);
 					    		}
 					    	}
+					    	for(Gene g : cgenesRev){
+					    		tgList = g.inTranscript(curRead);
+					    		if(tgList.size() > 0){
+					    			tgBuilder.append(g.getAnnotation().getId());
+					    			tgBuilder.append(com);
+					    			tgBuilder.append(g.getBiotype());
+					    			tgBuilder.append(dop);
+					    			tgBuilder.append(tgList.get(0));
+					    			for( int i = 1; i < tgList.size(); i++){
+					    				tgBuilder.append(com);
+						    			tgBuilder.append(tgList.get(i));
+					    			}
+					    			
+					    			gList.add(tgBuilder.toString());
+					    			tgBuilder.setLength(0);
+					    		}
+					    	}
+					    	
 					    	if(gList.size() > 0){
 						    	resultBuilder.append(tab);
 					    		resultBuilder.append(couStr);
@@ -471,6 +501,17 @@ public class BAMFeatures {
 						    			tgBuilder.setLength(0);
 						    		}
 					    		}
+					    		for(Gene g : cgenesRev){
+						    		if(g.inMerged(curRead)){
+						    			tgBuilder.append(g.getAnnotation().getId());
+						    			tgBuilder.append(com);
+						    			tgBuilder.append(g.getBiotype());
+						    			tgBuilder.append(dop);
+						    			tgBuilder.append(merStr);
+						    			gList.add(tgBuilder.toString());
+						    			tgBuilder.setLength(0);
+						    		}
+					    		}
 					    		if(gList.size() > 0){
 							    	resultBuilder.append(tab);
 						    		resultBuilder.append(couStr);
@@ -485,6 +526,15 @@ public class BAMFeatures {
 						    	}
 					    		else{
 						    		for(Gene g : cgenes){
+							    		tgBuilder.append(g.getAnnotation().getId());
+							    		tgBuilder.append(com);
+							    		tgBuilder.append(g.getBiotype());
+							    		tgBuilder.append(dop);
+							    		tgBuilder.append(intStr);
+							    		gList.add(tgBuilder.toString());
+							    		tgBuilder.setLength(0);
+						    		}
+						    		for(Gene g : cgenesRev){
 							    		tgBuilder.append(g.getAnnotation().getId());
 							    		tgBuilder.append(com);
 							    		tgBuilder.append(g.getBiotype());
@@ -545,6 +595,29 @@ public class BAMFeatures {
 					    		if(lneigh.size() > 0){
 					    			ldist = start - lneigh.get(0).getStop() -1;
 					    		}
+					    		
+					    		if(nostrand){
+						    		ArrayList<Gene> rneighRev = new ArrayList<Gene>();
+						    		rneighRev = geneTree.get(chr).get(revstr).getIntervalsRightNeighbor(start, stop, rneighRev);
+						    		long rdistRev = -1;
+						    		if(rneighRev.size() > 0){
+						    			rdistRev = rneighRev.get(0).getStart() - stop -1;
+						    		}
+						 
+						    		rdist = Math.min(rdist, rdistRev);
+						    		
+						    		ArrayList<Gene> lneighRev = new ArrayList<Gene>();
+						    		lneighRev = geneTree.get(chr).get(revstr).getIntervalsLeftNeighbor(start, stop, lneighRev);
+						    		long ldistRev = -1;
+						    		if(lneighRev.size() > 0){
+						    			ldistRev = start - lneighRev.get(0).getStop() -1;
+						    		}
+						    		
+
+						    		ldist = Math.min(ldist, ldistRev);
+
+					    		}
+					    		
 					    		
 					    		if(ldist < 0){
 					    			if(rdist < 0){
