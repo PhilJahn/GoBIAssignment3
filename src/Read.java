@@ -24,6 +24,8 @@ public class Read implements Interval{
 	private int clip;
 	private int split;
 	
+	private boolean sepChr;
+	
 	private IntervalTree<RegionBlock> alignment_blocks;
 	
 	private ArrayList<RegionBlock> exons_fop;
@@ -84,6 +86,7 @@ public class Read implements Interval{
 		readname = fop.getReadName();
 		
 		chr = fop.getReferenceName();
+		sepChr = !(chr.equals(sop.getReferenceName()));
 		
 		if(fop.getReadNegativeStrandFlag()){
 			strand = '-';
@@ -358,6 +361,10 @@ public class Read implements Interval{
 
 	public int getSplit(){
 		return introns.size();
+	}
+	
+	public boolean sepChr(){
+		return sepChr;
 	}
 
 	class StartRegionBlockComparator implements Comparator<RegionBlock>
